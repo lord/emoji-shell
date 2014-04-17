@@ -44,7 +44,16 @@ impl Shell {
     fn run_cmd(&mut self, cmd: ~str, argv: ~[~str]) {
         if self.cmd_exists(cmd) {
             println!("Executing {}", cmd);
-            let p = Process::new(cmd, argv);
+            let config = process::ProcessConfig {
+                program: cmd,
+                args: argv,
+                stdin: process::InheritFd(0),
+                stdout: process::InheritFd(1),
+                stderr: process::InheritFd(2),
+                .. process::ProcessConfig::new()
+            };
+
+            let p = Process::configure(config);
             let status = p.unwrap().wait();
             match status {
                 process::ExitSignal(st) => println!("Exited with signal {}", st),

@@ -38,7 +38,8 @@ impl Shell {
     fn cmd(&mut self, cmd_line: ~str) {
         let mut arg_vec = ~[];
         let mut cmd = ~"";
-        for (index, s) in cmd_line.split_str(" ").enumerate() {
+        for (index, raw_s) in cmd_line.split_str("\U0001F345").enumerate() {
+            let s = raw_s.trim();
             if s == "" { continue; }
             if index == 0 { cmd = s.to_owned(); } else { arg_vec.push(s.to_owned()); }
         }
@@ -55,7 +56,7 @@ impl Shell {
 
     fn execute_program(&mut self, cmd: ~str, argv: ~[~str]) {
         if self.cmd_exists(cmd) {
-            println!("\U0001F3C3 {}", cmd);
+            println!("\U0001F3C3  {}", cmd);
             let config = process::ProcessConfig {
                 program: cmd,
                 args: argv,
@@ -69,8 +70,8 @@ impl Shell {
             let p = Process::configure(config);
             let status = p.unwrap().wait();
             match status {
-                process::ExitSignal(st) => println!("Exited with signal {}", st),
-                process::ExitStatus(st) => println!("Exited with status {}", st)
+                process::ExitSignal(st) => println!("\U0001F6B7  {} \u27A1  {}", cmd, st),
+                process::ExitStatus(st) => println!("\U0001F6B7  {} \u27A1  {}", cmd, st)
             }
         }
         else {

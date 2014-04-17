@@ -1,15 +1,18 @@
 use std::io::stdio;
 use std::io::Process;
 use std::io::process;
+use std::path::posix::Path;
 
 struct Shell {
     cmd_prompt: ~str,
+    cwd: Path
 }
 
 impl Shell {
-    fn new(prompt_str: &str) -> Shell {
+    fn new(prompt_str: &str, cwd: Path) -> Shell {
         Shell {
             cmd_prompt: prompt_str.to_owned(),
+            cwd: cwd
         }
     }
 
@@ -42,11 +45,19 @@ impl Shell {
     }
 
     fn run_cmd(&mut self, cmd: ~str, argv: ~[~str]) {
+        match cmd.as_slice() {
+            &"\U0001F697" => self.cd(argv),
+            _ => self.execute_program(cmd, argv)
+        }
+    }
+
+    fn execute_program(&mut self, cmd: ~str, argv: ~[~str]) {
         if self.cmd_exists(cmd) {
-            println!("Executing {}", cmd);
+            println!("\U0001F3C3 {}", cmd);
             let config = process::ProcessConfig {
                 program: cmd,
                 args: argv,
+                cwd: Some(&self.cwd),
                 stdin: process::InheritFd(0),
                 stdout: process::InheritFd(1),
                 stderr: process::InheritFd(2),
@@ -65,6 +76,18 @@ impl Shell {
         }
     }
 
+    fn cd(&mut self, path: ~[~str]) {
+        if path.len() == 0 {
+            println!("Please specify a path to \U0001F697  to.");
+            return;
+        }
+        let p = Path::new(path[0]);
+        if !p.is_dir() {
+            println!("\U0001F697  could not find that, \U0001F62D  ")
+        }
+        self.cwd = p;
+    }
+
     fn cmd_exists(&mut self, cmd: &str) -> bool {
         let p = Process::new("which", [cmd.to_owned()]);
         let status = p.unwrap().wait();
@@ -76,5 +99,5 @@ impl Shell {
 }
 
 fn main() {
-    Shell::new("\U0001f41a  ").start();
+    Shell::new("\U0001f41a  ", std::os::getcwd()).start();
 }

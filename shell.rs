@@ -50,8 +50,16 @@ impl Shell {
         match cmd.as_slice() {
             &"\U0001F697" => self.cd(argv),
             &"\U0001F4CD" => self.pwd(),
+            &"\U0001F50E" => self.execute_program(~"ls", argv),
+            &"\U0001F431" => self.execute_program(~"cat", argv),
+            &"cat" => self.reject("cat"),
+            &"ls" => self.reject("ls"),
             _ => self.execute_program(cmd, argv)
         }
+    }
+
+    fn reject(&mut self, attempted_command: &str) {
+        println!("Please do not use {}, it is offensive", attempted_command);
     }
 
     fn execute_program(&mut self, cmd: ~str, argv: ~[~str]) {

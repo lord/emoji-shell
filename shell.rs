@@ -47,6 +47,7 @@ impl Shell {
     fn run_cmd(&mut self, cmd: ~str, argv: ~[~str]) {
         match cmd.as_slice() {
             &"\U0001F697" => self.cd(argv),
+            &"\U0001F4CD" => self.pwd(),
             _ => self.execute_program(cmd, argv)
         }
     }
@@ -86,6 +87,10 @@ impl Shell {
             println!("\U0001F697  could not find that, \U0001F62D  ")
         }
         self.cwd = p;
+    }
+
+    fn pwd(&mut self) {
+        println!("\u27A1 {} \u2B05  \U0001F4CD", self.cwd.as_str().unwrap());
     }
 
     fn cmd_exists(&mut self, cmd: &str) -> bool {

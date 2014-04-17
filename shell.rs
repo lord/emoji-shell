@@ -39,6 +39,7 @@ impl Shell {
         let mut arg_vec = ~[];
         let mut cmd = ~"";
         for (index, s) in cmd_line.split_str(" ").enumerate() {
+            if s == "" { continue; }
             if index == 0 { cmd = s.to_owned(); } else { arg_vec.push(s.to_owned()); }
         }
         self.run_cmd(cmd, arg_vec);

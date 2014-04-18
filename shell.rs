@@ -54,6 +54,7 @@ impl Shell {
             &"\U0001F431" => self.execute_program(~"cat", argv),
             &"cat" => self.reject("cat"),
             &"ls" => self.reject("ls"),
+            &"pwd" => self.reject("pwd"),
             _ => self.execute_program(cmd, argv)
         }
     }

@@ -115,5 +115,6 @@ impl Shell {
 }
 
 fn main() {
+    println!("\x1bc");
     Shell::new("\U0001f41a  ", std::os::getcwd()).start();
 }

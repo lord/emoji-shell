@@ -1,15 +1,15 @@
-use std::io::stdio;
-use std::io::Process;
-use std::io::process;
-use std::path::posix::Path;
+use std::env;
+use std::io::stdin;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 struct Shell {
-    cmd_prompt: ~str,
-    cwd: Path
+    cmd_prompt: String,
+    cwd: PathBuf
 }
 
 impl Shell {
-    fn new(prompt_str: &str, cwd: Path) -> Shell {
+    fn new(prompt_str: &str, cwd: PathBuf) -> Shell {
         Shell {
             cmd_prompt: prompt_str.to_owned(),
             cwd: cwd
@@ -17,28 +17,28 @@ impl Shell {
     }
 
     fn start(&mut self) {
-        let mut stdin = stdio::stdin();
+        let stdin = stdin();
         loop {
-            stdio::print(self.cmd_prompt);
-            stdio::flush();
+            println!("{}", self.cmd_prompt);
 
-            let line = stdin.read_line().unwrap();
+            let mut line = String::new();
+            stdin.read_line(&mut line).unwrap();
             let cmd_line = line.trim().to_owned();
-            let program = cmd_line.splitn(' ', 1).nth(0).expect("no program");
+            let program = cmd_line.splitn(1, ' ').nth(0).expect("no program");
 
             match program {
                 ""      =>  { continue; }
-                "\u274c"  =>  { return; }
+                "\u{274c}"  =>  { return; }
                 _       =>  { self.cmd(cmd_line.clone()); }
                 // _ => { println!("You just ran {}", cmd_line) }
             }
         }
     }
 
-    fn cmd(&mut self, cmd_line: ~str) {
-        let mut arg_vec = ~[];
-        let mut cmd = ~"";
-        for (index, raw_s) in cmd_line.split_str("\U0001F345").enumerate() {
+    fn cmd(&mut self, cmd_line: String) {
+        let mut arg_vec = Vec::new();
+        let mut cmd = String::new();
+        for (index, raw_s) in cmd_line.split("\u{1F345}").enumerate() {
             let s = raw_s.trim();
             if s == "" { continue; }
             if index == 0 { cmd = s.to_owned(); } else { arg_vec.push(s.to_owned()); }
@@ -46,15 +46,15 @@ impl Shell {
         self.run_cmd(cmd, arg_vec);
     }
 
-    fn run_cmd(&mut self, cmd: ~str, argv: ~[~str]) {
-        match cmd.as_slice() {
-            &"\U0001F697" => self.cd(argv),
-            &"\U0001F4CD" => self.pwd(),
-            &"\U0001F50E" => self.execute_program(~"ls", argv),
-            &"\U0001F431" => self.execute_program(~"cat", argv),
-            &"cat" => self.reject("cat"),
-            &"ls" => self.reject("ls"),
-            &"pwd" => self.reject("pwd"),
+    fn run_cmd(&mut self, cmd: String, argv: Vec<String>) {
+        match &*cmd {
+            "\u{1F697}" => self.cd(argv),
+            "\u{1F4CD}" => self.pwd(),
+            "\u{1F50D}" => self.execute_program("ls".to_string(), argv),
+            "\u{1F431}" => self.execute_program("cat".to_string(), argv),
+            "cat" => self.reject("cat"),
+            "ls" => self.reject("ls"),
+            "pwd" => self.reject("pwd"),
             _ => self.execute_program(cmd, argv)
         }
     }
@@ -63,58 +63,53 @@ impl Shell {
         println!("Please do not use {}, it is offensive", attempted_command);
     }
 
-    fn execute_program(&mut self, cmd: ~str, argv: ~[~str]) {
-        if self.cmd_exists(cmd) {
-            println!("\U0001F3C3  {}", cmd);
-            let config = process::ProcessConfig {
-                program: cmd,
-                args: argv,
-                cwd: Some(&self.cwd),
-                stdin: process::InheritFd(0),
-                stdout: process::InheritFd(1),
-                stderr: process::InheritFd(2),
-                .. process::ProcessConfig::new()
-            };
+    fn execute_program(&mut self, cmd: String, argv: Vec<String>) {
+        if self.cmd_exists(&cmd) {
+            println!("\u{1F3C3}  {}", cmd);
 
-            let p = Process::configure(config);
-            let status = p.unwrap().wait();
-            match status {
-                process::ExitSignal(st) => println!("\U0001F6B7  {} \u27A1  {}", cmd, st),
-                process::ExitStatus(st) => println!("\U0001F6B7  {} \u27A1  {}", cmd, st)
-            }
+            let status = Command::new(cmd.clone())
+                .args(argv)
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .current_dir(&self.cwd)
+                .status()
+                .expect("Command not found.");
+
+            println!("\u{1F6B7}  {} \u{27A1}  {}", cmd, status);
         }
         else {
-            println!("Command {} not found.", cmd)
+            println!("Command {} not found.", cmd);
         }
     }
 
-    fn cd(&mut self, path: ~[~str]) {
+    fn cd(&mut self, path: Vec<String>) {
         if path.len() == 0 {
-            println!("Please specify a path to \U0001F697  to.");
+            println!("Please specify a path to \u{1F697}  to.");
             return;
         }
-        let p = Path::new(path[0]);
+        let p = Path::new(&path[0]);
         if !p.is_dir() {
-            println!("\U0001F697  could not find that, \U0001F62D  ")
+            println!("\u{1F697}  could not find that, \u{1F62D}  ")
         }
-        self.cwd = p;
+        self.cwd = p.to_path_buf();
     }
 
     fn pwd(&mut self) {
-        println!("\u27A1 {} \u2B05  \U0001F4CD", self.cwd.as_str().unwrap());
+        println!("\u{27A1} {} \u{2B05}  \u{1F4CD}", self.cwd.display());
     }
 
     fn cmd_exists(&mut self, cmd: &str) -> bool {
-        let p = Process::new("which", [cmd.to_owned()]);
-        let status = p.unwrap().wait();
-        match status {
-            process::ExitSignal(st) => st == 0,
-            process::ExitStatus(st) => st == 0
-        }
+        let p = Command::new("which")
+            .arg(cmd.to_owned())
+            .output()
+            .expect("failed to execute process");
+        p.status.success()
     }
 }
 
 fn main() {
     println!("\x1bc");
-    Shell::new("\U0001f41a  ", std::os::getcwd()).start();
+    let path = env::current_dir().unwrap();
+    Shell::new("\u{1f41a}  ", path).start();
 }
